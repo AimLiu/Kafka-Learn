@@ -17,6 +17,9 @@ services:
       - "9092:9092"
 
     environment:
+      # --- 新增这行来限制 JVM 内存占用 ---
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
+      
       # 当前节点 ID；单节点通常设置为 1
       KAFKA_NODE_ID: 1
 

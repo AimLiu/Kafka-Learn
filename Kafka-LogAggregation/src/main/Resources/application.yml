@@ -1,0 +1,46 @@
+server:
+  port: ${APP_SERVER_PORT:8080}
+
+spring:
+  application:
+    name: kafka-log-aggregation
+  datasource:
+    url: jdbc:postgresql://${APP_DB_HOST:172.28.183.183}:${APP_DB_PORT:5432}/${APP_DB_NAME:kafka-learn}
+    username: ${APP_DB_USERNAME:postgres}
+    password: ${APP_DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  kafka:
+    producer:
+      bootstrap-servers: ${APP_KAFKA_PRODUCER_BOOTSTRAP_SERVERS:172.28.183.183:9092}
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      compression-type: ${APP_KAFKA_PRODUCER_COMPRESSION_TYPE:gzip}
+    consumer:
+      bootstrap-servers: ${APP_KAFKA_CONSUMER_BOOTSTRAP_SERVERS:172.28.183.183:9092}
+      group-id: ${APP_KAFKA_CONSUMER_GROUP:log-aggregation-group}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.kafkalearn.*
+        spring.json.value.default.type: com.kafkalearn.msg.KafkaSendMsg
+        spring.json.use.type.headers: false
+    listener:
+      missing-topics-fatal: false
+
+logging:
+  file:
+    path: ${LOGGIN_FILE_PATH:./Kafka-LogAggregation/log}
+
+app:
+  kafka:
+    produce-topic: ${APP_KAFKA_PRODUCE_TOPIC:kafka-log-aggregation-topic}
+    send-timeout-seconds: ${APP_KAFKA_SEND_TIMEOUT_SECONDS:10}
+  scheduler:
+    send-delay-ms: ${APP_OUTBOX_DELAY_MS:5000}
