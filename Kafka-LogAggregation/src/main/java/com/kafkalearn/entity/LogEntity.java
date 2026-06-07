@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.sql.Timestamp;
 import java.util.UUID;
 
 @Entity
@@ -18,7 +19,7 @@ public class LogEntity {
     private UUID msgId;
 
     @Column(name = "log_time", nullable = false)
-    private long logTime;
+    private Timestamp logTime;
 
     @Column(name = "log_from", nullable = false, length = 64)
     private String from;
@@ -35,17 +36,17 @@ public class LogEntity {
     public LogEntity(KafkaSendMsg msg) {
         this.setMsgId(UUID.fromString(msg.getMsgId()));
         ObjectNode payload = (ObjectNode) msg.getPayload();
-        this.setLogTime(payload.get("currentTime").asLong());
+        this.setLogTime(new Timestamp(payload.get("currentTime").asLong()));
         this.setMsg(payload.get("msg").asText());
         this.setFrom(payload.get("from").asText());
         this.setSucc(payload.get("succ").asBoolean());
     }
 
-    public long getLogTime() {
+    public Timestamp getLogTime() {
         return logTime;
     }
 
-    public void setLogTime(long logTime) {
+    public void setLogTime(Timestamp logTime) {
         this.logTime = logTime;
     }
 

@@ -5,7 +5,7 @@ spring:
   application:
     name: kafka-log-aggregation
   datasource:
-    url: jdbc:postgresql://${APP_DB_HOST:172.28.183.183}:${APP_DB_PORT:5432}/${APP_DB_NAME:kafka-learn}
+    url: jdbc:postgresql://${APP_DB_HOST:192.168.19.64}:${APP_DB_PORT:5432}/${APP_DB_NAME:kafka-learn}
     username: ${APP_DB_USERNAME:postgres}
     password: ${APP_DB_PASSWORD:postgres}
   jpa:
@@ -17,17 +17,20 @@ spring:
         format_sql: true
   kafka:
     producer:
-      bootstrap-servers: ${APP_KAFKA_PRODUCER_BOOTSTRAP_SERVERS:172.28.183.183:9092}
+      bootstrap-servers: ${APP_KAFKA_PRODUCER_BOOTSTRAP_SERVERS:192.168.19.64:9092}
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       compression-type: ${APP_KAFKA_PRODUCER_COMPRESSION_TYPE:gzip}
     consumer:
-      bootstrap-servers: ${APP_KAFKA_CONSUMER_BOOTSTRAP_SERVERS:172.28.183.183:9092}
+      bootstrap-servers: ${APP_KAFKA_CONSUMER_BOOTSTRAP_SERVERS:192.168.19.64:9092}
       group-id: ${APP_KAFKA_CONSUMER_GROUP:log-aggregation-group}
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
+        # 真正的 key/value 反序列化器
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: com.kafkalearn.*
         spring.json.value.default.type: com.kafkalearn.msg.KafkaSendMsg
         spring.json.use.type.headers: false

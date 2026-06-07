@@ -3,6 +3,7 @@ package com.kafkalearn.producer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.LongNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.kafkalearn.callback.CallbackMsg;
@@ -13,9 +14,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import javax.print.attribute.standard.MediaSize;
 import java.time.Instant;
+import java.time.temporal.TemporalField;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.random.RandomGenerator;
 
@@ -28,22 +32,21 @@ public class SheduleProducer {
     private final JsonNodeFactory jsonNodeFactory;
 
     public SheduleProducer(KafkaMsgProducer kafkaMsgProducer,
-                           KafkaProperties properties,
-                           JsonNodeFactory jsonNodeFactory) {
+                           KafkaProperties properties) {
         this.kafkaMsgProducer = kafkaMsgProducer;
         this.properties = properties;
-        this.jsonNodeFactory = jsonNodeFactory;
+        this.jsonNodeFactory = JsonNodeFactory.instance;
     }
 
     @Scheduled(fixedDelayString = "${app.scheduler.send-delay-ms:5000}")
     public void produceLoop() {
         Instant instant = Instant.now();
         Map<String, JsonNode> map = new HashMap<>();
-        RandomGenerator generator = RandomGenerator.of("RandomGenerator");
+        Random generator = new Random();
         try {
             int nextInt = generator.nextInt(100);
 
-            map.put("currentTime", new IntNode(instant.getNano()));
+            map.put("currentTime", new LongNode(instant.toEpochMilli()));
             map.put("from", nextInt <= 50 ? new TextNode("google") : new TextNode("baidu"));
             map.put("msg", nextInt <= 50 ? new TextNode("this is succ msg") : new TextNode("this is faild msg"));
             map.put("succ", nextInt <= 50 ? jsonNodeFactory.booleanNode(true) : jsonNodeFactory.booleanNode(false));

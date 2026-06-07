@@ -1,5 +1,7 @@
 package com.kafkalearn.msg;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
@@ -13,7 +15,13 @@ public class KafkaSendMsg {
     private String msgId;
     private JsonNode payload;
 
-    public KafkaSendMsg(String msgId, JsonNode payload) {
+    /**
+     * 需要使用JsonCreator注解，否则无法进行解码
+     * @param msgId
+     * @param payload
+     */
+    @JsonCreator
+    public KafkaSendMsg(@JsonProperty("msgId")String msgId, @JsonProperty("payload") JsonNode payload) {
         this.msgId = msgId;
         this.payload = payload;
     }

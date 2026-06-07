@@ -1,5 +1,6 @@
 package com.kafkalearn.consumer;
 
+import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.kafkalearn.entity.LogEntity;
 import com.kafkalearn.msg.KafkaSendMsg;
 import com.kafkalearn.repository.LogRepository;
@@ -29,7 +30,7 @@ public class LogConsumer {
     public void consume(@Payload KafkaSendMsg message) {
         LogEntity entity = new LogEntity(message);
         logRepository.save(entity);
-        log.info("日志已持久化, msgId=[{}], from=[{}], succ=[{}]",
+        log.info("日志已拉取并持久化, msgId=[{}], from=[{}], succ=[{}]",
                 entity.getMsgId(), entity.getFrom(), entity.isSucc());
     }
 }
