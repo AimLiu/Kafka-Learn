@@ -1,0 +1,21 @@
+# Maven build output
+target/
+
+# Compiled bytecode
+*.class
+
+# Application logs
+*.log
+log/
+
+# Local design / deployment docs (not tracked)
+docs/
+
+# IntelliJ module files (generated at repo root)
+*.iml
+
+# Logback fallback directory when springProperty is unresolved
+LOG_PATH_IS_UNDEFINED/
+
+#ignore idea file
+.idea/*
