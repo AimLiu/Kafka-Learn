@@ -15,6 +15,7 @@
         <module>Kafka-Outbox-Model</module>
         <module>Kafka-LogAggregation</module>
         <module>Kafka-EventDriven</module>
+        <module>Kafka-EventSourcing</module>
     </modules>
 
     <properties>
