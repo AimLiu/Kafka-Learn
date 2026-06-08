@@ -7,10 +7,11 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>Kafka-LogAggregation</artifactId>
+    <artifactId>Kafka-EventDriven</artifactId>
     <packaging>jar</packaging>
 
-    <name>Kafka-LogAggregation</name>
+    <name>Kafka-EventDriven</name>
+    <url>http://maven.apache.org</url>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
@@ -51,23 +52,18 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.4.14</version>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
 </project>
