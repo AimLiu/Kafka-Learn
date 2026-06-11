@@ -4,6 +4,11 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Unit test for simple App.
  */
@@ -34,5 +39,13 @@ public class AppTest
     public void testApp()
     {
         assertTrue( true );
+    }
+    public void testApp2()
+    {
+        List<int[]> list = new ArrayList<>();
+        Collections.sort(list, (a,b)->{
+            if(a[0] > b[0]) return a[0] - b[0];
+            else return a[1] - b[1];
+        });
     }
 }

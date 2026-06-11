@@ -1,0 +1,45 @@
+server:
+  port: ${APP_SERVER_PORT:8081}
+
+spring:
+  application:
+    name: kafka-fan-out
+  datasource:
+    url: jdbc:postgresql://${APP_DB_HOST:192.168.19.64}:${APP_DB_PORT:5432}/${APP_DB_NAME:kafka-learn}
+    username: ${APP_DB_USERNAME:postgres}
+    password: ${APP_DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  kafka:
+    bootstrap-servers: ${APP_KAFKA_BOOTSTRAP_SERVERS:192.168.19.64:9092}
+    producer:
+      acks: all
+      retries: 3
+      batch-size: 16384
+      linger-ms: 10
+      compression-type: snappy
+      request-timeout-ms: 30000
+      client-id: alert-producer-id-1
+      enable-idempotence: true
+    consumer:
+      auto-offset-reset: earliest
+      max-poll-records: 500
+      enable-auto-commit: false   # 由 Spring Kafka 在 ack 后提交
+    listener:
+      ack-mode: record            # 每条处理完再 ack；失败走 ErrorHandler
+
+logging:
+  file:
+    path: ${LOGGIN_FILE_PATH:./Kafka-FanOut/log}
+
+app:
+  simulator:
+    random-interval-ms: 5000
+    learning-cycle-enabled: true
+    learning-cycle-interval-ms: 30000
+    fixed-device-id: c542567a-dfb1-4af7-940a-a5cada4372b6

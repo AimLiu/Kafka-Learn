@@ -16,6 +16,7 @@
         <module>Kafka-LogAggregation</module>
         <module>Kafka-EventDriven</module>
         <module>Kafka-EventSourcing</module>
+        <module>Kafka-FanOut</module>
     </modules>
 
     <properties>
