@@ -1,19 +1,36 @@
 # Kafka-EventSourcing
 
-事件溯源（Event Sourcing）学习模块，场景为 **银行账户**：开户、充值、扣款、关户；以 PostgreSQL 事件表为真相源，Kafka 驱动读侧投影，并包含 **快照** 与 **Replay 对账 API**。
+事件溯源（Event Sourcing）学习模块：银行账户场景（开户、充值、扣款、关户），以 PostgreSQL `es_event` 为真相源，Kafka 驱动读侧异步投影。
 
-> 详细场景、架构与 API 说明见 [docs/EventSourcing学习版-设计文档.md](../docs/EventSourcing学习版-设计文档.md)
+## 设计思想
 
-## 架构（方案 A）
+**状态变更不直接 UPDATE，而是追加不可变事件**；当前余额等读模型由事件投影得出。
 
 ```
-Command API → AccountAggregate → es_event（PG Event Store）
-                              → Kafka account-events
-                              → AccountProjector → 读模型表
-Snapshot / Replay API → 直接读 es_event（仍在方案 A 内，不替代 PG + Kafka）
+Command API → AccountCommandService → AccountAggregate
+                                   → es_event（PG Event Store，append-only）
+                                   → Kafka account-events
+                                   → AccountEventProjector → 读模型表
 ```
 
-**快照** 与 **Replay** 是方案 A 的性能/验证增强，不是另一种架构。
+方案 A 要点：
+
+- **写侧真相源**：`es_event` 事件表（非 Kafka）。
+- **Kafka 角色**：事务提交后分发事件，驱动投影 Consumer。
+- **读模型**：`es_account_balance_view`、`es_account_transaction_view` 异步更新。
+- **命令幂等**：`es_command_dedup`；**并发控制**：`es_account.current_version` 乐观锁。
+
+## 用到的 Kafka 特性
+
+| 特性 | 本模块用法 |
+|------|------------|
+| Producer | 写库成功后发 `account-events` Topic |
+| Consumer | `AccountEventProjector` 投影消费者组 `account-projection-group` |
+| 序列化 | JSON 字符串 + `StringSerializer`（`AccountEventCodec`） |
+| 与 DB 关系 | PG 为准；Kafka 故障时写侧仍可用（事件已在 PG） |
+| 投影幂等 | 按 `event_id` 去重写入读模型 |
+
+**未在本模块 Entity 中实现**：`es_account_snapshot`、`es_projection_checkpoint`（README 保留 SQL 供扩展，尚无对应 JPA 实体）。
 
 ## 涉及场景一览
 
@@ -24,28 +41,23 @@ Snapshot / Replay API → 直接读 es_event（仍在方案 A 内，不替代 PG
 | S3 | 扣款 | `MoneyWithdrawn`，余额不足拒绝 |
 | S4 | 查询余额 | 读 `es_account_balance_view` |
 | S5 | 查询流水 | 读 `es_account_transaction_view` |
-| S6 | 关闭账户 | `AccountClosed`（可选） |
+| S6 | 关闭账户 | `AccountClosed` |
 | S7 | 并发冲突 | `current_version` 乐观锁 |
 | S8 | 命令幂等 | `es_command_dedup` |
 | S9 | 异步投影 | Kafka → Projector |
 | S10 | 投影幂等 | 按 `event_id` 去重 |
-| S11 | 写快照 | `es_account_snapshot` |
-| S12 | Replay 对账 | 重放事件 vs 读模型 |
-| S13 | Kafka 故障 | 写侧以 PG 为准（见设计文档） |
-| S14 | 读模型重建 | 从 `es_event` 全量重投影 |
 
-## 运行（模块实现后）
+## 运行
 
 ```bash
-# 在项目根目录
-mvn clean install
+docker compose up -d
 
-# 启动本模块
+mvn clean install
 cd Kafka-EventSourcing
 mvn spring-boot:run
 ```
 
-主类（待实现）：`com.kafkalearn.KafkaEventSourcingApplication`
+主类：`com.kafkalearn.KafkaEventSourcingApplication`
 
 ## 关键配置
 
@@ -56,27 +68,27 @@ mvn spring-boot:run
 | `APP_DB_HOST` / `APP_DB_NAME` | `192.168.19.64` / `kafka-learn` | PostgreSQL |
 | `app.kafka.account-events-topic` | `account-events` | 账户事件 Topic |
 
+建议 `ddl-auto: none`，手工建表。
+
 ## 数据库建表
 
-启动前在 PostgreSQL 执行以下 SQL（建议 `ddl-auto: none`，手工建表）：
+以下 SQL 与现有 Entity 对齐。时间字段 Entity 使用 `Instant`，对应 PostgreSQL `timestamp`。
 
 ```sql
--- 1. 聚合根元数据
-create table if not exists es_account
-(
+-- 1. 聚合根元数据 → EsAccount
+create table if not exists es_account (
     account_id      uuid primary key,
     owner_name      varchar(128) not null,
-    status          varchar(32)  not null default 'ACTIVE',
+    status          varchar(32)  not null default 'ACTIVE',  -- ACTIVE | CLOSED
     current_version bigint       not null default 0,
     created_at      timestamp    not null default current_timestamp,
     updated_at      timestamp    not null default current_timestamp,
     constraint chk_es_account_status check (status in ('ACTIVE', 'CLOSED'))
 );
 
--- 2. Event Store（append-only）
-create table if not exists es_event
-(
-    event_id        uuid         primary key,
+-- 2. Event Store（append-only）→ EsEvent
+create table if not exists es_event (
+    event_id        uuid primary key,
     aggregate_type  varchar(64)  not null default 'Account',
     aggregate_id    uuid         not null,
     event_type      varchar(64)  not null,
@@ -93,20 +105,8 @@ create table if not exists es_event
 create index if not exists idx_es_event_aggregate_seq on es_event (aggregate_id, sequence);
 create index if not exists idx_es_event_occurred_at on es_event (occurred_at);
 
--- 3. 快照
-create table if not exists es_account_snapshot
-(
-    account_id       uuid primary key,
-    snapshot_version bigint         not null,
-    balance          numeric(18, 2) not null,
-    snapshot_payload jsonb,
-    created_at       timestamp      not null default current_timestamp,
-    constraint fk_es_snapshot_account foreign key (account_id) references es_account (account_id)
-);
-
--- 4. 余额读模型
-create table if not exists es_account_balance_view
-(
+-- 3. 余额读模型 → EsAccountBalanceView
+create table if not exists es_account_balance_view (
     account_id          uuid primary key,
     owner_name          varchar(128)   not null,
     balance             numeric(18, 2) not null default 0,
@@ -117,9 +117,8 @@ create table if not exists es_account_balance_view
     constraint chk_es_balance_view_status check (status in ('ACTIVE', 'CLOSED'))
 );
 
--- 5. 流水读模型
-create table if not exists es_account_transaction_view
-(
+-- 4. 流水读模型 → EsAccountTransactionView
+create table if not exists es_account_transaction_view (
     tx_id         uuid primary key,
     account_id    uuid           not null,
     event_id      uuid           not null,
@@ -132,31 +131,54 @@ create table if not exists es_account_transaction_view
     constraint fk_es_tx_event foreign key (event_id) references es_event (event_id)
 );
 
-create index if not exists idx_es_tx_account_time on es_account_transaction_view (account_id, occurred_at desc);
+create index if not exists idx_es_tx_account_time
+    on es_account_transaction_view (account_id, occurred_at desc);
 
--- 6. 命令幂等
-create table if not exists es_command_dedup
-(
+-- 5. 命令幂等 → EsCommandDedup
+create table if not exists es_command_dedup (
     command_id      uuid primary key,
     command_type    varchar(64) not null,
     aggregate_id    uuid,
-    status          varchar(32) not null default 'PROCESSING',
+    status          varchar(32) not null default 'PROCESSING',  -- PROCESSING | SUCCEEDED | FAILED
     result_event_id uuid,
     error_message   varchar(512),
     created_at      timestamp   not null default current_timestamp,
     updated_at      timestamp   not null default current_timestamp,
     constraint chk_es_command_status check (status in ('PROCESSING', 'SUCCEEDED', 'FAILED'))
 );
+```
 
--- 7. 投影检查点（可选）
-create table if not exists es_projection_checkpoint
-(
+### 扩展表（设计预留，当前无 Entity）
+
+```sql
+-- 快照（S11，待实现 EsAccountSnapshot 实体）
+create table if not exists es_account_snapshot (
+    account_id       uuid primary key,
+    snapshot_version bigint         not null,
+    balance          numeric(18, 2) not null,
+    snapshot_payload jsonb,
+    created_at       timestamp      not null default current_timestamp,
+    constraint fk_es_snapshot_account foreign key (account_id) references es_account (account_id)
+);
+
+-- 投影检查点（可选，待实现实体）
+create table if not exists es_projection_checkpoint (
     projection_name varchar(128) primary key,
     last_event_id   uuid,
     last_global_seq bigint,
     updated_at      timestamp not null default current_timestamp
 );
 ```
+
+## Entity 对照
+
+| 表名 | Entity 类 |
+|------|-----------|
+| `es_account` | `EsAccount` |
+| `es_event` | `EsEvent` |
+| `es_account_balance_view` | `EsAccountBalanceView` |
+| `es_account_transaction_view` | `EsAccountTransactionView` |
+| `es_command_dedup` | `EsCommandDedup` |
 
 ## API 速查
 
@@ -169,29 +191,11 @@ create table if not exists es_projection_checkpoint
 | 读 | GET | `/api/accounts/{id}/balance` |
 | 读 | GET | `/api/accounts/{id}/transactions` |
 
-### 示例
-
 ```bash
-# 开户
 curl -X POST http://localhost:8080/api/accounts \
   -H "Content-Type: application/json" \
   -d '{"commandId":"11111111-1111-1111-1111-111111111111","ownerName":"张三","initialBalance":100.00}'
-
-# 充值
-curl -X POST http://localhost:8080/api/accounts/{accountId}/deposit \
-  -H "Content-Type: application/json" \
-  -d '{"commandId":"22222222-2222-2222-2222-222222222222","amount":50.00}'
-
-# 查询余额（投影异步，可能需要短暂等待）
-curl http://localhost:8080/api/accounts/{accountId}/balance
 ```
-
-## 说明
-
-- 写侧：`AccountCommandService` → `EventStoreDao` 追加 `es_event` → 事务提交后发 Kafka。
-- 读侧：`AccountEventProjector` 消费 `account-events` → 更新读模型表。
-- Kafka 配置复用 `KafkaAutoConfiguration` + `KafkaProperties`（与 EventDriven 模块同模式）。
-- 事件编解码使用 `AccountEventCodec`（JSON 字符串 + `StringSerializer`）。
 
 ## 与 Kafka-EventDriven 的区别
 
@@ -199,5 +203,11 @@ curl http://localhost:8080/api/accounts/{accountId}/balance
 |---|---|---|
 | 真相源 | 当前状态表 | `es_event` 事件流 |
 | 历史 | 无 | 完整保留 |
-| 余额/状态 | 直接 UPDATE | 事件重放或投影 |
+| 状态更新 | 直接 UPDATE | 事件追加 + 投影 |
 | Kafka 角色 | 主链路传递 | 写库后分发、驱动投影 |
+
+## 学到了什么
+
+- Event Sourcing 下「写」与「读」分离（CQRS 雏形）。
+- Kafka 是投影触发器，不是事件唯一存储。
+- 命令幂等与乐观锁在分布式写侧的必要性。
