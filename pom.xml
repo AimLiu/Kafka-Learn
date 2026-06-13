@@ -17,6 +17,7 @@
         <module>Kafka-EventDriven</module>
         <module>Kafka-EventSourcing</module>
         <module>Kafka-FanOut</module>
+        <module>Kafka-RequestReply</module>
     </modules>
 
     <properties>
