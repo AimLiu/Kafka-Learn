@@ -52,7 +52,7 @@ mvn spring-boot:run
 
 ## 已有模块索引
 
-根 `pom.xml` 当前注册 **7 个子模块**，均已实现并可运行。详情见各模块 `README.md`。
+根 `pom.xml` 当前注册 **8 个子模块**，均已实现并可运行。详情见各模块 `README.md`。
 
 | 模块 | 对应模式 | 默认端口 | 主类 | 一句话说明 |
 |------|----------|----------|------|------------|
@@ -63,6 +63,7 @@ mvn spring-boot:run
 | [Kafka-FanOut](Kafka-FanOut/) | 扇出 + DLQ + 幂等 | 8081 | `KafkaFanOutApplication` | 一条告警被三个 Consumer Group 并行处理，失败进 DLQ 并归档 |
 | [Kafka-EventSourcing](Kafka-EventSourcing/) | 事件溯源 + CQRS 投影 | 8080 | `KafkaEventSourcingApplication` | 银行账户命令追加 `es_event`，Kafka 驱动读侧异步投影 |
 | [Kafka-RequestReply](Kafka-RequestReply/) | 请求-响应 | 8081 | `KafkaRequestReplyApplication` | request/reply 双 Topic + `correlationId` 配对，HTTP 同步等待 reply |
+| [Kafka-Streams](Kafka-Streams/) | Kafka Streams 流处理 | 8082 | `KafkaStreamsApplication` | IoT 温湿度窗口聚合 + 门磁人体 Stream-Stream Join |
 
 > **端口冲突提示**：多个模块默认使用 `8080` 或 `8081`，同时运行时请通过 `APP_SERVER_PORT` 指定不同端口。
 
@@ -82,6 +83,7 @@ Kafka-Learn/
 ├── Kafka-FanOut/                   # 【已有】扇出 + DLQ + 幂等消费
 ├── Kafka-EventSourcing/            # 【已有】事件溯源 + 读模型投影
 ├── Kafka-RequestReply/             # 【已有】Request-Reply + correlationId
+├── Kafka-Streams/                  # 【已有】Kafka Streams 窗口聚合 + Join
 └── Kafka-xxx/                      # 【待建】见下方学习路线
 ```
 
@@ -142,6 +144,12 @@ Transactional Outbox + 异步回调通知最小可靠链路：
 
 → [Kafka-RequestReply/README.md](Kafka-RequestReply/README.md)
 
+### Kafka-Streams
+
+智慧家庭 IoT 场景：温湿度遥测 1 分钟窗口聚合 + 超温告警；门磁 OPEN 与人体移动 30 秒内 Stream-Stream Join 生成入侵告警。无 PostgreSQL，输出 Topic + 日志验收。
+
+→ [Kafka-Streams/README.md](Kafka-Streams/README.md)
+
 ---
 
 ## Kafka 常用使用模式
@@ -165,7 +173,7 @@ Transactional Outbox + 异步回调通知最小可靠链路：
 | 11 | 死信队列（DLQ） | 多次失败后转入 DLQ | Poison message 隔离 | `Kafka-DLQ` | 待建（`Kafka-FanOut` 已演示 DLQ + 归档） |
 | 12 | CDC（Change Data Capture） | DB 变更经 Debezium 等写入 Kafka | 数据库变更同步 | `Kafka-CDC` | 待建 |
 | 13 | Saga（编排 / 编舞） | 长事务拆成多步事件 + 补偿 | 分布式事务 | `Kafka-Saga` | 待建 |
-| 14 | 流处理（Kafka Streams） | 流式聚合、窗口、Join | 实时统计、风控 | `Kafka-Streams` | 待建 |
+| 14 | 流处理（Kafka Streams） | 流式聚合、窗口、Join | 实时统计、风控 | `Kafka-Streams` | **已有** |
 
 ### Outbox + 接收消息回调 + 通知第三方平台
 
@@ -268,7 +276,7 @@ CDC              ──►       Saga            ──►       设备档案同
 
 9. **Kafka-EventSourcing** — 事件溯源、命令/查询分离、投影
 10. **Kafka-RequestReply** — correlationId、双 Topic、应用层 RPC
-11. `Kafka-Streams` — 窗口聚合、简单 Join
+11. **Kafka-Streams** — 窗口聚合、Stream-Stream Join
 12. `Kafka-CDC` — Debezium + PostgreSQL
 13. `Kafka-Saga` — 多步事件 + 补偿
 
@@ -306,6 +314,7 @@ CDC              ──►       Saga            ──►       设备档案同
 | [Kafka-FanOut/README.md](Kafka-FanOut/README.md) | 扇出 + DLQ + 幂等消费 |
 | [Kafka-EventSourcing/README.md](Kafka-EventSourcing/README.md) | 事件溯源 + 读模型投影 |
 | [Kafka-RequestReply/README.md](Kafka-RequestReply/README.md) | Request-Reply + correlationId |
+| [Kafka-Streams/README.md](Kafka-Streams/README.md) | Kafka Streams 窗口聚合 + Join |
 
 本地 Kafka 环境见根目录 [docker-compose.yml](docker-compose.yml)。
 

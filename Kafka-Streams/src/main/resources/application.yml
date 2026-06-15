@@ -1,0 +1,49 @@
+server:
+  port: ${APP_SERVER_PORT:8082}
+
+spring:
+  application:
+    name: kafka-streams-learn
+  kafka:
+    bootstrap-servers: ${APP_KAFKA_BOOTSTRAP_SERVERS:192.168.19.64:9092}
+    producer:
+      acks: all
+      retries: 3
+      batch-size: 16384
+      linger-ms: 10
+      compression-type: snappy
+      request-timeout-ms: 30000
+      enable-idempotence: true
+    consumer:
+      auto-offset-reset: earliest
+      max-poll-records: 500
+      enable-auto-commit: false
+    listener:
+      ack-mode: record
+    streams:
+      application-id: ${SPRING_KAFKA_STREAMS_APPLICATION_ID:kafka-streams-learn}
+      properties:
+        num.stream.threads: 2
+        processing.guarantee: at_least_once
+        default.key.serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+        default.value.serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+        cache.max.bytes.buffering: 10485760
+        commit.interval.ms: 1000
+
+logging:
+  file:
+    path: ${LOGGIN_FILE_PATH:./Kafka-Streams/log}
+
+app:
+  streams:
+    temp-threshold-celsius: 30.0
+    temp-window-minutes: 1
+    intrusion-join-seconds: 30
+  simulator:
+    enabled: true
+    telemetry-interval-ms: 5000
+    kitchen-overheat-enabled: true
+    kitchen-overheat-temperature: 32.0
+    scenario-demo-enabled: true
+    scenario-startup-delay-ms: 12000
+    join-timeout-demo-gap-ms: 35000
