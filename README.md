@@ -307,6 +307,7 @@ CDC              ──►       Saga            ──►       设备档案同
 
 | 文档 | 说明 |
 |------|------|
+| [docs/Kafka学习文档.md](docs/Kafka学习文档.md) | **Kafka 知识体系总览**（概念、模块对照、可靠性、拓展） |
 | [Kafka-PointToPoint/README.md](Kafka-PointToPoint/README.md) | 点对点 / 竞争消费 |
 | [Kafka-LogAggregation/README.md](Kafka-LogAggregation/README.md) | 日志聚合 |
 | [Kafka-EventDriven/README.md](Kafka-EventDriven/README.md) | 事件驱动 |

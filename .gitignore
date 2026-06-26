@@ -8,8 +8,9 @@ target/
 *.log
 log/
 
-# Local design / deployment docs (not tracked)
-docs/
+# Local design / deployment docs (not tracked), except shared learning docs
+docs/*
+!docs/Kafka学习文档.md
 
 # IntelliJ module files (generated at repo root)
 *.iml
